@@ -1,12 +1,24 @@
 # app.py
 import streamlit as st
 import pandas as pd
-import joblib
 import plotly.express as px
+import nbformat
+import types
 
-# Load model (replace with your actual model path)
-MODEL_PATH = 'model.pkl'
-model = joblib.load(MODEL_PATH)
+# Load model and prediction function from notebook
+MODEL_NOTEBOOK = 'model.ipynb'
+
+@st.cache_resource
+def load_notebook_model():
+    with open(MODEL_NOTEBOOK, 'r', encoding='utf-8') as f:
+        nb = nbformat.read(f, as_version=4)
+    namespace = {}
+    exec(compile("".join([cell['source'] for cell in nb.cells if cell.cell_type == 'code']), MODEL_NOTEBOOK, 'exec'), namespace)
+    model = namespace.get('model', None)
+    predict_fn = namespace.get('predict', None)
+    return model, predict_fn
+
+model, predict_fn = load_notebook_model()
 
 st.set_page_config(page_title="Churn Dashboard", layout="wide")
 
@@ -33,13 +45,18 @@ def predict_and_display(df):
         st.error("Missing 'CustomerID' column.")
         return
 
-    # Predict churn probabilities
-    X = df.drop(columns=['CustomerID'], errors='ignore')
-    y_probs = model.predict_proba(X)[:, 1]
-    df['Churn_Probability'] = y_probs
+    # Predict churn probabilities using imported function
+    try:
+        df = predict_fn(df)
+    except Exception as e:
+        st.error(f"Error during prediction: {e}")
+        return
 
-    # Sort by churn probability
-    df_sorted = df.sort_values(by='Churn_Probability', ascending=False)
+    if 'churn_prob_pred' not in df.columns:
+        st.error("Prediction function did not append 'churn_prob_pred' column.")
+        return
+
+    df_sorted = df.sort_values(by='churn_prob_pred', ascending=False)
     top_churn = df_sorted.head(10).copy()
 
     st.subheader("Top 10 Customers Likely to Churn")
@@ -82,11 +99,11 @@ def predict_and_display(df):
             else:
                 return 'green'
 
-        chart_data['Color'] = chart_data['Churn_Probability'].apply(color)
+        chart_data['Color'] = chart_data['churn_prob_pred'].apply(color)
         fig = px.bar(
             chart_data,
             x='CustomerID',
-            y='Churn_Probability',
+            y='churn_prob_pred',
             color='Color',
             color_discrete_map={'red': 'red', 'yellow': 'yellow', 'green': 'green'},
             title="Churn Probability"
@@ -99,7 +116,7 @@ def predict_and_display(df):
     min_prob = st.slider("Minimum Churn Probability", 0.0, 1.0, 0.0)
     max_prob = st.slider("Maximum Churn Probability", 0.0, 1.0, 1.0)
 
-    filtered = df_sorted[(df_sorted['Churn_Probability'] >= min_prob) & (df_sorted['Churn_Probability'] <= max_prob)]
+    filtered = df_sorted[(df_sorted['churn_prob_pred'] >= min_prob) & (df_sorted['churn_prob_pred'] <= max_prob)]
 
     if search_id:
         filtered = filtered[filtered['CustomerID'].astype(str).str.contains(search_id)]
