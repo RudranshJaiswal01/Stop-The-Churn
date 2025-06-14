@@ -1,133 +1,113 @@
-# app.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import nbformat
-import types
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import joblib
+import json
+from io import BytesIO
 
-# Load model and prediction function from notebook
-MODEL_NOTEBOOK = 'Stop_The_Churn_models.ipynb'
+# Streamlit Config
+st.set_page_config(page_title="Churn Predictor Dashboard", layout="wide")
 
-@st.cache_resource
-def load_notebook_model():
-    with open(MODEL_NOTEBOOK, 'r', encoding='utf-8') as f:
-        nb = nbformat.read(f, as_version=4)
-    namespace = {}
-    exec(compile("".join([cell['source'] for cell in nb.cells if cell.cell_type == 'code']), MODEL_NOTEBOOK, 'exec'), namespace)
-    model = namespace.get('model', None)
-    predict_fn = namespace.get('predict', None)
-    return model, predict_fn
-
-model, predict_fn = load_notebook_model()
-
-st.set_page_config(page_title="Churn Dashboard", layout="wide")
-
-# Sidebar: Upload CSV
-st.sidebar.title("Upload Dataset")
-uploaded_file = st.sidebar.file_uploader("Choose a CSV file", type="csv")
-
-# UI: Dark mode toggle
-dark_mode = st.sidebar.toggle("Dark Mode", value=False)
-
+# Dark mode toggle
+dark_mode = st.toggle("🌙 Enable Dark Mode")
 if dark_mode:
-    st.markdown(
-        """
-        <style>
-            .main, .stApp {background-color: #1E1E1E; color: white;}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown("""<style>body { background-color: #0e1117; color: #ffffff; }</style>""", unsafe_allow_html=True)
 
-# App logic
-def predict_and_display(df):
-    if 'CustomerID' not in df.columns:
-        st.error("Missing 'CustomerID' column.")
-        return
+# Title
+st.title("📉 Churn Prediction Dashboard")
 
-    # Predict churn probabilities using imported function
-    try:
-        df = predict_fn(df)
-    except Exception as e:
-        st.error(f"Error during prediction: {e}")
-        return
+# File uploader
+uploaded_file = st.file_uploader("Upload CSV File with Customer Data", type=["csv"])
 
-    if 'churn_prob_pred' not in df.columns:
-        st.error("Prediction function did not append 'churn_prob_pred' column.")
-        return
+def get_sparse_encoded_unseen(df):
+  df['Partner'] = df['Partner'].map({'No': 0, 'Yes': 1})
+  df['Dependents'] = df['Dependents'].map({'No': 0, 'Yes': 1})
+  df['PhoneService'] = df['PhoneService'].map({'No': 0, 'Yes': 1})
+  df['PaperlessBilling'] = df['PaperlessBilling'].map({'No': 0, 'Yes': 1})
+  df['StreamingMovies'] = df['StreamingMovies'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
+  df['StreamingTV'] = df['StreamingTV'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
+  df['TechSupport'] = df['TechSupport'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
+  df['DeviceProtection'] = df['DeviceProtection'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
+  df['OnlineBackup'] = df['OnlineBackup'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
+  df['OnlineSecurity'] = df['OnlineSecurity'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
+  df['InternetService'] = df['InternetService'].map({'DSL': 0, 'Fiber optic': 1, 'No': 2})
+  df['MultipleLines'] = df['MultipleLines'].map({'No phone service': 0, 'No': 1, 'Yes': 2})
+  df['Contract'] = df['Contract'].map({'Month-to-month': 0, 'Two year': 1, 'One year': 2})
+  df['PaymentMethod'] = df['PaymentMethod'].map({'Electronic check': 0, 'Mailed check': 1, 'Credit card (automatic)': 2, 'Bank transfer (automatic)': 3})
+  df['gender'] = df['gender'].map({'Male': 0, 'Female': 1})
+  
+  return df
 
-    df_sorted = df.sort_values(by='churn_prob_pred', ascending=False)
-    top_churn = df_sorted.head(10).copy()
+def predict(df):
+    model = joblib.load("model.pkl")
+    X = df.copy()
+    X = X.drop(columns=['customerID', 'TotalCharges'], errors='ignore')
+    X['MonthlyCharges'] = X['MonthlyCharges'].astype(float)
+    print('There are ', X.isnull().sum().sum(), ' missing values in the dataset. Dropping rows with missing values')
+    null_indices = X[X.isnull().any(axis=1)].index
+    X_okay_indices = X.index.difference(null_indices)
+    X_not_okay = X.loc[null_indices]
+    X_okay = X.loc[X_okay_indices]
+    print('These rows were dropped for having missing values', X_not_okay)
+    X_okay = get_sparse_encoded_unseen(X_okay)
+    probs = model.predict_proba(X_okay)[:, 1]
+    df['churn_probability'] = np.nan
+    df.loc[X_okay_indices, 'churn_probability'] = probs
+    return df
 
-    st.subheader("Top 10 Customers Likely to Churn")
-
-    # Checkbox states
-    if 'selected_ids' not in st.session_state:
-        st.session_state.selected_ids = set()
-        st.session_state.previous_ids = set()
-
-    col1, col2, col3 = st.columns([1, 1, 2])
-    with col1:
-        show_all = st.checkbox("Show All", key="show_all")
-    with col2:
-        clear_all = st.checkbox("Clear All", key="clear_all")
-
-    if show_all:
-        st.session_state.previous_ids = st.session_state.selected_ids.copy()
-        st.session_state.selected_ids = set(top_churn['CustomerID'])
-    elif clear_all:
-        st.session_state.previous_ids = st.session_state.selected_ids.copy()
-        st.session_state.selected_ids = set()
-    elif not show_all and not clear_all:
-        st.session_state.selected_ids = st.session_state.previous_ids.copy()
-
-    for _, row in top_churn.iterrows():
-        checked = st.checkbox(f"Customer {row['CustomerID']}", value=row['CustomerID'] in st.session_state.selected_ids)
-        if checked:
-            st.session_state.selected_ids.add(row['CustomerID'])
-        else:
-            st.session_state.selected_ids.discard(row['CustomerID'])
-
-    chart_data = top_churn[top_churn['CustomerID'].isin(st.session_state.selected_ids)]
-
-    if not chart_data.empty:
-        def color(prob):
-            if prob > 0.7:
-                return 'red'
-            elif prob > 0.3:
-                return 'yellow'
-            else:
-                return 'green'
-
-        chart_data['Color'] = chart_data['churn_prob_pred'].apply(color)
-        fig = px.bar(
-            chart_data,
-            x='CustomerID',
-            y='churn_prob_pred',
-            color='Color',
-            color_discrete_map={'red': 'red', 'yellow': 'yellow', 'green': 'green'},
-            title="Churn Probability"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    # Search & filter
-    st.subheader("Search & Filter")
-    search_id = st.text_input("Search by CustomerID")
-    min_prob = st.slider("Minimum Churn Probability", 0.0, 1.0, 0.0)
-    max_prob = st.slider("Maximum Churn Probability", 0.0, 1.0, 1.0)
-
-    filtered = df_sorted[(df_sorted['churn_prob_pred'] >= min_prob) & (df_sorted['churn_prob_pred'] <= max_prob)]
-
-    if search_id:
-        filtered = filtered[filtered['CustomerID'].astype(str).str.contains(search_id)]
-
-    st.dataframe(filtered, use_container_width=True)
-
-# Main
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.subheader("Dataset Preview")
-    st.dataframe(df.head(), use_container_width=True)
-    predict_and_display(df)
-else:
-    st.info("Please upload a CSV file to begin.")
+    st.subheader("Raw Data Sample")
+    st.write(df.head())
+
+    # Check if all required features are present
+    # missing_features = [col for col in model_features if col not in df.columns]
+    # if missing_features:
+    #     st.error(f"❌ The following required features are missing from the uploaded CSV: {missing_features}")
+    #     st.stop()
+
+    # Predict churn probabilities
+    df = predict(df.copy())
+    df['predicted_churn'] = df['churn_probability']>0.4921
+    df['predicted_churn'] = df['predicted_churn'].astype(int)
+
+    # AUC note
+    st.success("✅ Predictions Generated Using Pre-trained Model")
+
+    # Download predictions
+    def convert_df(df):
+        output = BytesIO()
+        df.to_csv(output, index=False)
+        return output.getvalue()
+
+    st.download_button("📥 Download Predictions CSV", data=convert_df(df), file_name='predictions.csv', mime='text/csv')
+
+    # Churn Probability Histogram
+    st.subheader("🔍 Churn Probability Distribution")
+    fig1, ax1 = plt.subplots()
+    sns.histplot(df['churn_probability'], bins=20, kde=True, color='skyblue', ax=ax1)
+    st.pyplot(fig1)
+
+    # Churn Pie Chart
+    st.subheader("📊 Churn vs Retain Distribution")
+    pie_data = df['predicted_churn'].value_counts().rename({0: 'Retain', 1: 'Churn'})
+    st.pyplot(pie_data.plot.pie(autopct='%1.1f%%', colors=['green', 'red'], ylabel='').get_figure())
+
+    # Top 10 High Risk Table
+    st.subheader("🚨 Top 10 High-Risk Customers")
+    high_risk = df.sort_values(by='churn_probability', ascending=False).head(10)
+    st.dataframe(high_risk)
+
+    # Colored Bar Chart by Risk Level
+    st.subheader("🎯 Churn Probability Bar Chart")
+    display_df = df[['churn_probability']].copy().sort_values(by='churn_probability', ascending=False).reset_index()
+    bar_colors = display_df['churn_probability'].apply(
+        lambda x: 'red' if x > 0.7 else ('yellow' if x > 0.3 else 'green')
+    )
+    fig2, ax2 = plt.subplots(figsize=(10, 4))
+    ax2.bar(display_df.index, display_df['churn_probability'], color=bar_colors)
+    ax2.set_ylabel('Probability to Churn')
+    ax2.set_xlabel('Customer Index (Sorted)')
+    st.pyplot(fig2)
