@@ -93,7 +93,7 @@ if uploaded_file:
     # Churn Pie Chart
     st.subheader("📊 Churn vs Retain Distribution")
     pie_data = df['predicted_churn'].value_counts().rename({0: 'Retain', 1: 'Churn'})
-    st.pyplot(pie_data.plot.pie(autopct='%1.1f%%', colors=['green', 'red'], ylabel='').get_figure())
+    st.pyplot(pie_data.plot.pie(autopct='%1.1f%%', colors=['green', 'red'], xlabel='Churn Predicted').get_figure())
 
     # Top 10 High Risk Table
     st.subheader("🚨 Top 10 High-Risk Customers")
@@ -102,12 +102,12 @@ if uploaded_file:
 
     # Colored Bar Chart by Risk Level
     st.subheader("🎯 Churn Probability Bar Chart")
-    display_df = df[['churn_probability']].copy().sort_values(by='churn_probability', ascending=False).reset_index()
+    display_df = df[['churn_probability', 'customerID']].copy().sort_values(by='churn_probability', ascending=False).reset_index()
     bar_colors = display_df['churn_probability'].apply(
-        lambda x: 'red' if x > 0.7 else ('yellow' if x > 0.3 else 'green')
+        lambda x: 'red' if x > 0.7 else ('yellow' if x > 0.35 else 'green')
     )
     fig2, ax2 = plt.subplots(figsize=(10, 4))
-    ax2.bar(display_df.index, display_df['churn_probability'], color=bar_colors)
+    ax2.bar(display_df['customerID'], display_df['churn_probability'], color=bar_colors)
     ax2.set_ylabel('Probability to Churn')
     ax2.set_xlabel('Customer Index (Sorted)')
     st.pyplot(fig2)
