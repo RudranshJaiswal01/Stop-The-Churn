@@ -99,7 +99,7 @@ if uploaded_file:
 
     # Bar Chart by Risk Level
     st.subheader("🎯 Churn Probability Bar Chart")
-    display_df = df[['churn_probability']].copy().sort_values(by='churn_probability', ascending=False).reset_index(drop=True)
+    display_df = df[['churn_probability']].copy()
     bar_colors = display_df['churn_probability'].apply(
         lambda x: 'red' if x > 0.7 else ('yellow' if x > 0.35 else 'green')
     )
