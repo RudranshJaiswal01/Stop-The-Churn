@@ -86,14 +86,16 @@ if uploaded_file:
 
     # Churn Probability Histogram
     st.subheader("🔍 Churn Probability Distribution")
-    fig1, ax1 = plt.subplots()
+    fig1, ax1 = plt.subplots(figsize=(8, 4))
     sns.histplot(df['churn_probability'], bins=20, kde=True, color='skyblue', ax=ax1)
     st.pyplot(fig1)
 
     # Churn Pie Chart
     st.subheader("📊 Churn vs Retain Distribution")
     pie_data = df['predicted_churn'].value_counts().rename({0: 'Retain', 1: 'Churn'})
-    st.pyplot(pie_data.plot.pie(autopct='%1.1f%%', colors=['green', 'red'], xlabel='Churn Predicted').get_figure())
+    fig3, ax3 = plt.subplots(figsize=(5, 5))
+    pie_data.plot.pie(autopct='%1.1f%%', colors=['green', 'red'], ylabel='', ax=ax3)
+    st.pyplot(fig3)
 
     # Top 10 High Risk Table
     st.subheader("🚨 Top 10 High-Risk Customers")
@@ -106,7 +108,7 @@ if uploaded_file:
     bar_colors = display_df['churn_probability'].apply(
         lambda x: 'red' if x > 0.7 else ('yellow' if x > 0.35 else 'green')
     )
-    fig2, ax2 = plt.subplots(figsize=(10, 4))
+    fig2, ax2 = plt.subplots(figsize=(8, 3.5))
     ax2.bar(display_df['customerID'], display_df['churn_probability'], color=bar_colors)
     ax2.set_ylabel('Probability to Churn')
     ax2.set_xlabel('Customer Index (Sorted)')
