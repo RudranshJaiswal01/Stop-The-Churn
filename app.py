@@ -78,7 +78,7 @@ if uploaded_file:
 
     # Histogram of Churn Probability
     st.subheader("🔍 Churn Probability Distribution")
-    fig1, ax1 = plt.subplots(figsize=(4, 2))
+    fig1, ax1 = plt.subplots(figsize=(16,8))
     sns.histplot(df['churn_probability'], bins=20, kde=True, color='skyblue', ax=ax1)
     plt.tight_layout()
     st.pyplot(fig1)
@@ -86,7 +86,7 @@ if uploaded_file:
     # Pie Chart
     st.subheader("📊 Churn vs Retain Distribution")
     pie_data = df['predicted_churn'].value_counts().rename({0: 'Retain', 1: 'Churn'})
-    fig3, ax3 = plt.subplots(figsize=(2,2))
+    fig3, ax3 = plt.subplots(figsize=(10,10))
     ax3.pie(pie_data, labels=pie_data.index, autopct='%1.1f%%', colors=['green', 'red'], startangle=90)
     ax3.axis('equal')
     plt.tight_layout()
