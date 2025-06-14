@@ -6,7 +6,7 @@ import nbformat
 import types
 
 # Load model and prediction function from notebook
-MODEL_NOTEBOOK = 'Stop The Churn models.ipynb'
+MODEL_NOTEBOOK = 'Stop_The_Churn_models.ipynb'
 
 @st.cache_resource
 def load_notebook_model():
