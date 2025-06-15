@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from utils import preprocess_data, predict_churn, plot_churn_distribution, plot_probability_bars
+from utils import preprocess_data, predict_churn, plot_churn_distribution, plot_probability_bars, plot_pie_chart
 from model_comparison import display_model_comparison, load_model
 import shap
 import joblib
@@ -48,6 +48,7 @@ if uploaded_file:
     st.subheader("📊 Prediction Insights")
     plot_churn_distribution(df_with_preds)
     plot_probability_bars(df_with_preds)
+    plot_pie_chart(df_with_preds)
 
     st.subheader("🚨 Top 10 High-Risk Customers")
     top_10 = df_with_preds.sort_values(by='churn_probability', ascending=False).head(10)
