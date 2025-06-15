@@ -22,9 +22,4 @@ def display_model_comparison():
 
     # ROC Curve
     st.markdown("#### 📈 ROC Curve")
-    st.markdown("""
-        <div style='text-align: center;'>
-            <img src='static/roc_curve.png' width='600'/>
-        </div>
-        """, unsafe_allow_html=True)
-
+    st.image("static/roc_curve.png", width=600)
