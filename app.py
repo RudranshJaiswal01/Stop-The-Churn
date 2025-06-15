@@ -62,6 +62,7 @@ if uploaded_file:
     st_shap = st.container()
     with st_shap:
         st.markdown("#### Feature Importance Summary Plot")
+        plt.clf()
         shap.plots.beeswarm(shap_values, max_display=15, show=False)
         fig = plt.gcf()
         st.pyplot(fig)
