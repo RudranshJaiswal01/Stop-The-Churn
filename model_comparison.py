@@ -12,10 +12,10 @@ def display_model_comparison():
 
     data = {
         "Model": ["Logistic Regression", "Random Forest", "XGBoost", "MLP"],
-        "AUC-ROC": [0.84, 0.81, 0.83, 0.79],
-        "F1-Score": [0.75, 0.71, 0.74, 0.68],
-        "Precision": [0.76, 0.70, 0.74, 0.66],
-        "Recall": [0.74, 0.72, 0.73, 0.70]
+        "AUC-ROC": [0.86, 0.84, 0.83, 0.86],
+        "F1-Score": [0.78, 0.78, 0.78, 0.80],
+        "Precision": [0.77, 0.72, 0.73, 0.76],
+        "Recall": [0.79, 0.85, 0.83, 0.84]
     }
     df = pd.DataFrame(data)
     st.dataframe(df, use_container_width=True)
