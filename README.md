@@ -153,7 +153,7 @@ MIT License. See `LICENSE`.
 ## ✍️ Author
 
 **Rudransh Jaiswal** &#x20;
-Made with ❤️ for applied machine learning.
+Made with ❤️ for applied data science.
 
 Feel free to fork, star, or contribute to this project!
 
