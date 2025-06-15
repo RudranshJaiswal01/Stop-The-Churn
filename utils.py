@@ -1,3 +1,9 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import streamlit as st
+
 def preprocess_data(df):
     indices = df.index
     df = df.drop(columns=['customerID', 'TotalCharges'], errors='ignore')
