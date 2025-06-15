@@ -22,14 +22,9 @@ def display_model_comparison():
 
     # ROC Curve
     st.markdown("#### 📈 ROC Curve")
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot([0, 1], [0, 1], 'k--')
-    ax.plot([0, 0.15, 1], [0, 0.84, 1], label='Logistic Regression', linewidth=2)
-    ax.plot([0, 0.20, 1], [0, 0.81, 1], label='Random Forest', linewidth=2)
-    ax.plot([0, 0.18, 1], [0, 0.83, 1], label='XGBoost', linewidth=2)
-    ax.plot([0, 0.25, 1], [0, 0.79, 1], label='MLP', linewidth=2)
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-    ax.legend()
-    ax.set_title("ROC Curve Comparison")
-    st.pyplot(fig)
+    st.markdown("""
+        <div style='text-align: center;'>
+            <img src='static/roc_curve.png' width='600'/>
+        </div>
+        """, unsafe_allow_html=True)
+
