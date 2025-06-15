@@ -43,12 +43,14 @@ def plot_churn_distribution(df):
     st.pyplot(fig)
 
 def plot_probability_bars(df):
+    import numpy as np
     prob_df = df[['churn_probability']].dropna().copy()
-    prob_df = prob_df.sort_values(by='churn_probability')
+    prob_df = prob_df.sort_values(by='churn_probability').reset_index(drop=True)
     bar_colors = prob_df['churn_probability'].apply(
         lambda x: 'red' if x > 0.7 else ('orange' if x > 0.35 else 'green'))
+    
     fig, ax = plt.subplots(figsize=(10, 3.5))
-    ax.bar(prob_df.index, prob_df['churn_probability'], color=bar_colors)
+    ax.bar(np.arange(len(prob_df)), prob_df['churn_probability'], color=bar_colors)
     ax.set_ylabel("Churn Probability")
     ax.set_xlabel("Customer Index")
     st.pyplot(fig)
