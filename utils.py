@@ -43,14 +43,24 @@ def plot_churn_distribution(df):
     st.pyplot(fig)
 
 def plot_probability_bars(df):
-    import numpy as np
-    prob_df = df[['churn_probability']].dropna().copy()
-    prob_df = prob_df.sort_values(by='churn_probability').reset_index(drop=True)
-    bar_colors = prob_df['churn_probability'].apply(
-        lambda x: 'red' if x > 0.7 else ('orange' if x > 0.35 else 'green'))
-    
-    fig, ax = plt.subplots(figsize=(10, 3.5))
-    ax.bar(np.arange(len(prob_df)), prob_df['churn_probability'], color=bar_colors)
-    ax.set_ylabel("Churn Probability")
-    ax.set_xlabel("Customer Index")
-    st.pyplot(fig)
+    st.subheader("🎯 Churn Probability Bar Chart")
+    display_df = df[['churn_probability']].copy()
+    bar_colors = display_df['churn_probability'].apply(
+        lambda x: 'red' if x > 0.7 else ('yellow' if x > 0.35 else 'green')
+    )
+    fig2, ax2 = plt.subplots(figsize=(10, 3.5))
+    ax2.bar(display_df.index, display_df['churn_probability'], color=bar_colors)
+    ax2.set_ylabel('Probability to Churn')
+    ax2.set_xlabel('Customer Index (Sorted)')
+    plt.tight_layout()
+    st.pyplot(fig2)
+
+def plot_pie_chart(df):
+    st.subheader("📊 Churn vs Retain Distribution")
+    pie_data = df['predicted_churn'].value_counts().rename({0: 'Retain', 1: 'Churn'})
+    fig3, ax3 = plt.subplots(figsize=(10,10))
+    fig3, ax3 = plt.subplots(figsize=(5,5))
+    ax3.pie(pie_data, labels=pie_data.index, autopct='%1.1f%%', colors=['green', 'red'], startangle=90)
+    ax3.axis('equal')
+    plt.tight_layout()
+    st.pyplot(fig3)
