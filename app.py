@@ -1,111 +1,66 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
+from utils import preprocess_data, predict_churn, plot_churn_distribution, plot_probability_bars
+from model_comparison import display_model_comparison, load_model
+import shap
 import joblib
 from io import BytesIO
 
-# Streamlit Config
 st.set_page_config(page_title="Churn Predictor Dashboard", layout="wide")
 
-# Dark mode toggle
-dark_mode = st.toggle("🌙 Enable Dark Mode")
-if dark_mode:
-    st.markdown("""
-        <style>
-            body { background-color: #0e1117; color: #ffffff; }
-            .stApp { background-color: #0e1117; }
-        </style>
-    """, unsafe_allow_html=True)
+st.title("📉 Customer Churn Prediction Dashboard")
 
-# Title
-st.title("📉 Churn Prediction Dashboard")
+# ---------------------- Section: Model Summary ----------------------
+st.markdown("""
+### 🔍 Model Overview and Performance
+This dashboard uses **Logistic Regression** to predict churn. Multiple models were evaluated and compared. Logistic Regression was selected due to its high AUC-ROC score, interpretability, and balanced performance.
+""")
+display_model_comparison()
 
-# File uploader
-uploaded_file = st.file_uploader("Upload CSV File with Customer Data", type=["csv"])
+# ---------------------- Section: Upload + Predict ----------------------
+st.markdown("---")
+st.markdown("""
+### 📁 Upload Customer Data for Prediction
+Upload a `.csv` file containing customer records. Predictions will be generated using the pre-trained model.
+""")
 
-def get_sparse_encoded_unseen(df):
-    df['Partner'] = df['Partner'].map({'No': 0, 'Yes': 1})
-    df['Dependents'] = df['Dependents'].map({'No': 0, 'Yes': 1})
-    df['PhoneService'] = df['PhoneService'].map({'No': 0, 'Yes': 1})
-    df['PaperlessBilling'] = df['PaperlessBilling'].map({'No': 0, 'Yes': 1})
-    df['StreamingMovies'] = df['StreamingMovies'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
-    df['StreamingTV'] = df['StreamingTV'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
-    df['TechSupport'] = df['TechSupport'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
-    df['DeviceProtection'] = df['DeviceProtection'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
-    df['OnlineBackup'] = df['OnlineBackup'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
-    df['OnlineSecurity'] = df['OnlineSecurity'].map({'Yes': 0, 'No': 1, 'No internet service': 2})
-    df['InternetService'] = df['InternetService'].map({'DSL': 0, 'Fiber optic': 1, 'No': 2})
-    df['MultipleLines'] = df['MultipleLines'].map({'No phone service': 0, 'No': 1, 'Yes': 2})
-    df['Contract'] = df['Contract'].map({'Month-to-month': 0, 'Two year': 1, 'One year': 2})
-    df['PaymentMethod'] = df['PaymentMethod'].map({'Electronic check': 0, 'Mailed check': 1, 'Credit card (automatic)': 2, 'Bank transfer (automatic)': 3})
-    df['gender'] = df['gender'].map({'Male': 0, 'Female': 1})
-    return df
-
-def predict(df):
-    model = joblib.load("model.pkl")
-    X = df.copy()
-    X = X.drop(columns=['customerID', 'TotalCharges'], errors='ignore')
-    X['MonthlyCharges'] = X['MonthlyCharges'].astype(float)
-    null_indices = X[X.isnull().any(axis=1)].index
-    X_okay_indices = X.index.difference(null_indices)
-    X_not_okay = X.loc[null_indices]
-    X_okay = X.loc[X_okay_indices]
-    X_okay = get_sparse_encoded_unseen(X_okay)
-    probs = model.predict_proba(X_okay)[:, 1]
-    df['churn_probability'] = np.nan
-    df.loc[X_okay_indices, 'churn_probability'] = probs
-    return df
+uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.subheader("Raw Data Sample")
+    st.subheader("📄 Sample of Uploaded Data")
     st.write(df.head())
 
-    df = predict(df.copy())
-    df['predicted_churn'] = (df['churn_probability'] > 0.4921).astype(int)
+    model = load_model()
+    df_processed, indices = preprocess_data(df.copy())
+    df_with_preds = predict_churn(df, df_processed, indices, model)
 
-    st.success("✅ Predictions Generated Using Pre-trained Model")
+    threshold = st.slider("🔧 Set Churn Threshold", min_value=0.0, max_value=1.0, value=0.4921, step=0.01)
+    df_with_preds['predicted_churn'] = (df_with_preds['churn_probability'] > threshold).astype(int)
 
-    # Download predictions
-    def convert_df(df):
-        output = BytesIO()
-        df.to_csv(output, index=False)
-        return output.getvalue()
+    st.success("✅ Predictions Generated")
 
-    st.download_button("📥 Download Predictions CSV", data=convert_df(df), file_name='predictions.csv', mime='text/csv')
+    st.download_button("📥 Download Predictions CSV", data=BytesIO(df_with_preds.to_csv(index=False).encode()),
+                       file_name='predictions.csv', mime='text/csv')
 
-    # Histogram of Churn Probability
-    st.subheader("🔍 Churn Probability Distribution")
-    fig1, ax1 = plt.subplots(figsize=(12,6))
-    sns.histplot(df['churn_probability'], bins=20, kde=True, color='skyblue', ax=ax1)
-    plt.tight_layout()
-    st.pyplot(fig1)
+    st.markdown("---")
+    st.subheader("📊 Prediction Insights")
+    plot_churn_distribution(df_with_preds)
+    plot_probability_bars(df_with_preds)
 
-    # Pie Chart
-    st.subheader("📊 Churn vs Retain Distribution")
-    pie_data = df['predicted_churn'].value_counts().rename({0: 'Retain', 1: 'Churn'})
-    fig3, ax3 = plt.subplots(figsize=(5,5))
-    ax3.pie(pie_data, labels=pie_data.index, autopct='%1.1f%%', colors=['green', 'red'], startangle=90)
-    ax3.axis('equal')
-    plt.tight_layout()
-    st.pyplot(fig3)
-
-    # Top 10 High Risk Customers
     st.subheader("🚨 Top 10 High-Risk Customers")
-    high_risk = df.sort_values(by='churn_probability', ascending=False).head(10)
-    st.dataframe(high_risk)
+    top_10 = df_with_preds.sort_values(by='churn_probability', ascending=False).head(10)
+    st.dataframe(top_10)
 
-    # Bar Chart by Risk Level
-    st.subheader("🎯 Churn Probability Bar Chart")
-    display_df = df[['churn_probability']].copy()
-    bar_colors = display_df['churn_probability'].apply(
-        lambda x: 'red' if x > 0.7 else ('yellow' if x > 0.35 else 'green')
-    )
-    fig2, ax2 = plt.subplots(figsize=(10, 3.5))
-    ax2.bar(display_df.index, display_df['churn_probability'], color=bar_colors)
-    ax2.set_ylabel('Probability to Churn')
-    ax2.set_xlabel('Customer Index (Sorted)')
-    plt.tight_layout()
-    st.pyplot(fig2)
+    # SHAP Analysis
+    st.markdown("---")
+    st.subheader("🧠 SHAP Explanation for Model Predictions")
+    explainer = shap.Explainer(model, df_processed)
+    shap_values = explainer(df_processed)
+    st_shap = st.container()
+    with st_stap:
+        st.markdown("#### Feature Importance Summary Plot")
+        shap.plots.beeswarm(shap_values, max_display=15, show=False)
+        fig = plt.gcf()
+        st.pyplot(fig)
