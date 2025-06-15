@@ -22,4 +22,4 @@ def display_model_comparison():
 
     # ROC Curve
     st.markdown("#### 📈 ROC Curve")
-    st.image("static/roc_curve.png", width=600)
+    st.image("static/roc_curve (1).png", width=600)
