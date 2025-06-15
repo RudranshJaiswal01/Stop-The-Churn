@@ -146,7 +146,7 @@ Models were compared using metrics such as AUC-ROC, F1, Precision, and Recall:
 
 ## 💼 License
 
-MIT License. See `[LICENSE]()`.
+MIT License. See `LICENSE`.
 
 ---
 
@@ -159,4 +159,4 @@ Feel free to fork, star, or contribute to this project!
 
 ---
 
-> 📌 **Note**: To explore model training, comparison, and SHAP interpretability in detail, refer to the [Google Colab Notebook](https://colab.research.google.com/drive/1LhnAq-2VFaG5kXohKyz7wh3GeUdUPo3x?usp=sharing).
+> 📌 **Note**: To explore model training, comparison, and SHAP interpretability in detail, refer to the [Google Colab Notebook](https://colab.research.google.com/drive/1mXZF2xIGM7iZeQA4Ue-uCqTGekTOr1ej?usp=sharing).
