@@ -59,7 +59,7 @@ if uploaded_file:
     explainer = shap.Explainer(model, df_processed)
     shap_values = explainer(df_processed)
     st_shap = st.container()
-    with st_stap:
+    with st_shap:
         st.markdown("#### Feature Importance Summary Plot")
         shap.plots.beeswarm(shap_values, max_display=15, show=False)
         fig = plt.gcf()
